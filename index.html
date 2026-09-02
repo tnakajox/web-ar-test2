@@ -222,12 +222,28 @@
     }
 
     // カメラ切替
-    switchCamBtn.addEventListener('click', () => {
-      const mindarSystem = sceneEl.systems["mindar-image-system"];
-      if (mindarSystem) {
-        mindarSystem.switchCamera();
-      }
-    });
+   let currentFacingMode = 'environment'; // 初期はアウトカメラ
+
+switchCamBtn.addEventListener('click', async () => {
+  const mindarSystem = sceneEl.systems["mindar-image-system"];
+  if (!mindarSystem) return;
+
+  // モードを反転
+  currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+
+  try {
+    // 既存のカメラ配信を停止して切り替え
+    await mindarSystem.stop();
+    mindarSystem.facingMode = currentFacingMode;
+    await mindarSystem.start();
+  } catch (err) {
+    console.error("カメラ切り替えエラー:", err);
+    // 失敗した場合は標準のswitchCameraをフォールバック実行
+    if (mindarSystem.switchCamera) {
+      mindarSystem.switchCamera();
+    }
+  }
+});
 
     // シャッター
     shutterBtn.addEventListener('click', () => {
