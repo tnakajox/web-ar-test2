@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>高島屋 ローズAR体験</title>
+  <!-- MindAR & A-Frame ライブラリの読み込み -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  
+  <style>
+    body { margin: 0; overflow: hidden; }
+    
+    /* 花ボタンのデザイン */
+    #flower-btn {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      border: none;
+      border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(255, 117, 140, 0.4);
+      cursor: pointer;
+      display: none; /* マーカー認識まで非表示 */
+    }
+    #flower-btn:active {
+      transform: translateX(-50%) scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- UI: 花を降らせるボタン -->
+  <button id="flower-btn">🌸 花を咲かせる</button>
+
+  <!-- ARシーンの設定 (targets.mind は事前に変換したファイル名) -->
+  <a-scene 
+    mindar-image="imageTargetSrc: ./targets.mind;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- マーカー認識時のターゲットエンティティ -->
+    <a-entity id="example-target" mindar-image-target="targetIndex: 0">
+      <!-- ここに生成された花びらが追加されます -->
+      <a-entity id="flower-container"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const targetEl = document.querySelector('#example-target');
+    const btn = document.querySelector('#flower-btn');
+    const container = document.querySelector('#flower-container');
+
+    // マーカーを見つけたときにボタンを表示
+    targetEl.addEventListener("targetFound", () => {
+      btn.style.display = "block";
+    });
+
+    // マーカーを見失ったときにボタンを非表示
+    targetEl.addEventListener("targetLost", () => {
+      btn.style.display = "none";
+    });
+
+    // ボタンクリックで花びらを生成して舞い散らせる処理
+    btn.addEventListener('click', () => {
+      for (let i = 0; i < 15; i++) { // 1回で15枚追加
+        createPetal();
+      }
+    });
+
+    function createPetal() {
+      const petal = document.createElement('a-plane');
+      
+      // ランダムな初期位置（バラの周りから出現）
+      const x = (Math.random() - 0.5) * 1.5;
+      const y = Math.random() * 0.5;
+      const z = (Math.random() - 0.5) * 0.2;
+      
+      // 花びらのサイズと色設定（ピンク〜赤系のバリエーション）
+      const colors = ['#FFC0CB', '#FF69B4', '#FF1493', '#E6005C'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      petal.setAttribute('width', '0.08');
+      petal.setAttribute('height', '0.08');
+      petal.setAttribute('color', randomColor);
+      petal.setAttribute('material', 'transparent: true; opacity: 0.8; side: double');
+      petal.setAttribute('position', `${x} ${y} ${z}`);
+
+      // 落下と回転のアニメーション
+      petal.setAttribute('animation__fall', {
+        property: 'position',
+        to: `${x + (Math.random() - 0.5) * 0.5} ${y - 1.5} ${z}`,
+        dur: 2500 + Math.random() * 1000,
+        easing: 'linear'
+      });
+
+      petal.setAttribute('animation__rotate', {
+        property: 'rotation',
+        to: `${Math.random() * 360} ${Math.random() * 360} ${Math.random() * 360}`,
+        dur: 2000,
+        loop: true,
+        easing: 'linear'
+      });
+
+      container.appendChild(petal);
+
+      // 一定時間後に要素を消去してブラウザを軽量に保つ
+      setTimeout(() => {
+        if (petal.parentNode) {
+          petal.parentNode.removeChild(petal);
+        }
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
