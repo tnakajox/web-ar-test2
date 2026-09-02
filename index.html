@@ -3,9 +3,9 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>高島屋 ローズAR体験</title>
-  <!-- MindAR Face Tracking & A-Frame ライブラリ -->
+  <!-- MindAR Image Tracking & A-Frame -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   
   <style>
     body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -51,13 +51,12 @@
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       cursor: pointer;
       outline: none;
-      transition: transform 0.1s;
+      transition: transform 0.1s, opacity 0.3s;
     }
     .btn:active {
       transform: scale(0.92);
     }
 
-    /* カメラ切替ボタン */
     #switch-cam-btn {
       width: 50px;
       height: 50px;
@@ -68,15 +67,20 @@
       text-align: center;
     }
 
-    /* 花を咲かせるメインボタン */
     #flower-btn {
       background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
       color: #fff;
       font-size: 18px;
       padding: 15px 28px;
+      opacity: 0.5; /* マーカー未検出時は半透明 */
+      pointer-events: none; /* マーカー未検出時はタップ不可 */
     }
 
-    /* シャッターボタン */
+    #flower-btn.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     #shutter-btn {
       width: 62px;
       height: 62px;
@@ -132,30 +136,30 @@
     </div>
 
     <div class="bottom-bar">
-      <button id="flower-btn" class="btn">🌸 花を咲かせる</button>
+      <button id="flower-btn" class="btn">🌸 かざしてね</button>
       <button id="shutter-btn" class="btn">📸</button>
     </div>
   </div>
 
-  <!-- Face Tracking用のシーン構成 -->
+  <!-- 画像マーカー認識のARシーン設定 -->
   <a-scene 
-    mindar-face 
-    embedded 
+    mindar-image="imageTargetSrc: ./targets.mind;" 
     color-space="sRGB" 
     renderer="colorManagement: true, preserveDrawingBuffer: true" 
     vr-mode-ui="enabled: false" 
     device-orientation-permission-ui="enabled: false">
     
-    <a-camera active="false" position="0 0 0"></a-camera>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- 顔を検知するエンティティ -->
-    <a-entity mindar-face-target="anchorIndex: 1">
-      <!-- 動作確認用の小さなお花（鼻の頭付近に配置） -->
-      <a-text value="🌸" position="-0.15 0 0" scale="1.5 1.5 1.5"></a-text>
+    <!-- マーカー（0番目）を検知したときに表示する3Dコンテンツ -->
+    <a-entity id="example-target" mindar-image-target="targetIndex: 0">
+      <!-- マーカー上に浮かび上がる3Dテキスト/花マーク -->
+      <a-text value="🌹" position="0 0 0" align="center" scale="2 2 2"></a-text>
     </a-entity>
   </a-scene>
 
   <script>
+    const targetEl = document.querySelector('#example-target');
     const flowerBtn = document.querySelector('#flower-btn');
     const shutterBtn = document.querySelector('#shutter-btn');
     const switchCamBtn = document.querySelector('#switch-cam-btn');
@@ -164,8 +168,22 @@
 
     const flowerEmojis = ['🌸', '🌷', '🌼', '🌺', '🌹'];
 
-    // 「花を咲かせる」ボタンを押したときの処理
+    // マーカーが検出されたときの処理
+    targetEl.addEventListener("targetFound", () => {
+      flowerBtn.classList.add("active");
+      flowerBtn.textContent = "🌸 花を咲かせる";
+    });
+
+    // マーカーを見失ったときの処理
+    targetEl.addEventListener("targetLost", () => {
+      flowerBtn.classList.remove("active");
+      flowerBtn.textContent = "🌸 かざしてね";
+    });
+
+    // 「花を咲かせる」ボタン処理
     flowerBtn.addEventListener('click', () => {
+      if (!flowerBtn.classList.contains("active")) return;
+      
       for (let i = 0; i < 25; i++) {
         setTimeout(() => {
           createFlowerParticle();
@@ -203,15 +221,15 @@
       }, duration * 1000);
     }
 
-    // カメラ切替ボタンの処理
+    // カメラ切替
     switchCamBtn.addEventListener('click', () => {
-      const mindarSystem = sceneEl.systems["mindar-face-system"];
+      const mindarSystem = sceneEl.systems["mindar-image-system"];
       if (mindarSystem) {
         mindarSystem.switchCamera();
       }
     });
 
-    // 撮影ボタンの処理
+    // シャッター
     shutterBtn.addEventListener('click', () => {
       const canvas = sceneEl.components.screenshot.getCanvas('perspective');
       if (canvas) {
